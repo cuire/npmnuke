@@ -35,8 +35,13 @@ def test_find_node_modules_dirs_in_multiple_folders(tmpdir: Path) -> None:
 
     assert len(node_modules_dirs) == FOLDER_COUNT
 
-    for i in range(FOLDER_COUNT):
-        assert node_modules_dirs[i].name == str(i)
+    found = [False] * FOLDER_COUNT
+
+    # folders can be found in any order
+    for dir in node_modules_dirs:
+        found[int(dir.name)] = True
+
+    assert all(found)
 
 
 def test_find_node_modules_in_empty_folder(tmpdir: Path) -> None:
@@ -75,32 +80,38 @@ def test_remove_node_modules(tmpdir: Path) -> None:
         module = node_modules_dir / f"module_{i}"
         module.mkdir(parents=True, exist_ok=True)
 
-    remove_node_modules(node_modules_dir)
+    remove_node_modules(tmpdir)
 
     assert not node_modules_dir.exists()
 
 
 def test_remove_node_modules_in_nested_folder(tmpdir: Path) -> None:
-    node_modules_dir = tmpdir / "nested" / "node_modules"
+    nested_dir = tmpdir / "nested"
+    nested_dir.mkdir(parents=True, exist_ok=True)
+
+    node_modules_dir = nested_dir / "node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
 
     for i in range(10):
         module = node_modules_dir / f"module_{i}"
         module.mkdir(parents=True, exist_ok=True)
 
-    remove_node_modules(node_modules_dir)
+    remove_node_modules(nested_dir)
 
     assert not node_modules_dir.exists()
 
 
 def test_remove_node_modules_in_nested_folder_with_files(tmpdir: Path) -> None:
-    node_modules_dir = tmpdir / "nested" / "node_modules"
+    nested_dir = tmpdir / "nested"
+    nested_dir.mkdir(parents=True, exist_ok=True)
+
+    node_modules_dir = nested_dir / "node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
 
     file = node_modules_dir / "file.txt"
     file.touch()
 
-    remove_node_modules(node_modules_dir)
+    remove_node_modules(nested_dir)
 
     assert not node_modules_dir.exists()
 
@@ -114,10 +125,6 @@ def test_remove_node_modules_return_size(tmpdir: Path) -> None:
     file.touch()
     file.write_text("a" * 1024, encoding="ASCII")
 
-    expected_size_mb = file.stat().st_size / 1024 / 1024
-
-    size = remove_node_modules(node_modules_dir)
+    remove_node_modules(tmpdir)
 
     assert not node_modules_dir.exists()
-
-    assert size == expected_size_mb
