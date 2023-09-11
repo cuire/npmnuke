@@ -1,5 +1,6 @@
 import argparse
 import logging
+import shutil
 import sys
 from pathlib import Path
 
@@ -48,7 +49,15 @@ def find_node_modules_dirs(target_dir: Path) -> list[Path]:
     Find all folders that contain a node_modules folder.
     Not search for nested node_modules folders.
     """
-    raise NotImplementedError()
+    dirs = []
+
+    for dir in target_dir.iterdir():
+        if dir.name == NODE_MODULES:
+            dirs.append(dir.parent)
+        else:
+            dirs.extend(find_node_modules_dirs(dir))
+
+    return dirs
 
 
 def start_remove_dialog(node_modules_dirs: list[Path]) -> float:
@@ -60,12 +69,16 @@ def start_remove_dialog(node_modules_dirs: list[Path]) -> float:
     raise NotImplementedError()
 
 
-def remove_node_modules(dir: Path) -> float:
+def remove_node_modules(dir: Path) -> None:
     """
     Remove the node_modules folder from the given directory.
-    Return the amount of MB deleted.
     """
-    raise NotImplementedError()
+    node_modules_dir = dir / NODE_MODULES
+
+    if not node_modules_dir.exists():
+        raise ValueError(f"Directory {dir} does not contain a {NODE_MODULES} folder")
+
+    shutil.rmtree(node_modules_dir)
 
 
 def get_args() -> argparse.Namespace:
