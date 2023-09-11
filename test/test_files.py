@@ -6,7 +6,7 @@ import pytest
 from npmnuke.main import find_node_modules_dirs, remove_node_modules
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(autouse=True)
 def tmpdir() -> None:
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmpdir = Path(tmpdirname)
