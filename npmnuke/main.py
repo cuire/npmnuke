@@ -6,6 +6,8 @@ from pathlib import Path
 
 from halo import Halo
 
+__version__ = "0.1.0"
+
 NODE_MODULES = "node_modules"
 
 log = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ def interactive_dialog(target_dir: Path) -> None:
 
 
 def non_interactive_dialog(target_dir: Path, verbose=False) -> None:
-    print(LOGO)
+    print(f"> npmnuke 💥 {__version__}")
 
     print(f"Scanning '{target_dir}' for '{NODE_MODULES}' folders")
 
