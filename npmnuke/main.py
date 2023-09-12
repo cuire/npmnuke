@@ -4,6 +4,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from halo import Halo
+
 NODE_MODULES = "node_modules"
 
 log = logging.getLogger(__name__)
@@ -31,11 +33,26 @@ def main() -> None:
         log.error(f"Directory {target_dir} does not exist")
         sys.exit(1)
 
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    if args.non_interactive:
+        non_interactive_dialog(target_dir, verbose=args.verbose)
+    else:
+        interactive_dialog(target_dir)
+
+
+def interactive_dialog(target_dir: Path) -> None:
+    raise NotImplementedError()
+
+
+def non_interactive_dialog(target_dir: Path, verbose=False) -> None:
     print(LOGO)
 
     print(f"Scanning '{target_dir}' for '{NODE_MODULES}' folders")
 
-    node_modules_dirs = find_node_modules_dirs(target_dir)
+    with Halo(text="Loading", spinner="dots", enabled=not verbose):
+        node_modules_dirs = find_node_modules_dirs(target_dir)
 
     print(f"Found {len(node_modules_dirs)} '{NODE_MODULES}' folders")
 
@@ -96,6 +113,19 @@ def get_args() -> argparse.Namespace:
         type=str,
         help="directory to scan",
         default=".",
+    )
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="do not start the interactive dialog (simplified command line interface)",
+        default=True,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="show verbose output",
+        default=False,
     )
     return parser.parse_args()
 
