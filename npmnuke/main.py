@@ -4,6 +4,7 @@ import shutil
 import sys
 from pathlib import Path
 
+import click
 from halo import Halo
 
 __version__ = "0.1.0"
@@ -39,7 +40,11 @@ def main() -> None:
         logging.basicConfig(level=logging.DEBUG)
 
     if args.non_interactive:
-        non_interactive_dialog(target_dir, verbose=args.verbose)
+        non_interactive_dialog(
+            target_dir,
+            verbose=args.verbose,
+            skip_calculating_size=args.skip_calculating_size,
+        )
     else:
         interactive_dialog(target_dir)
 
@@ -48,7 +53,9 @@ def interactive_dialog(target_dir: Path) -> None:
     raise NotImplementedError()
 
 
-def non_interactive_dialog(target_dir: Path, verbose=False) -> None:
+def non_interactive_dialog(
+    target_dir: Path, verbose=False, skip_calculating_size=False
+) -> None:
     print(f"> npmnuke 💥 {__version__}")
 
     print(f"Scanning '{target_dir}' for '{NODE_MODULES}' folders")
@@ -58,7 +65,17 @@ def non_interactive_dialog(target_dir: Path, verbose=False) -> None:
 
     print(f"Found {len(node_modules_dirs)} '{NODE_MODULES}' folders")
 
-    total_cleaned_mb = start_remove_dialog(node_modules_dirs)
+    if not node_modules_dirs:
+        return
+
+    calculated_size = None
+    if not skip_calculating_size:
+        with click.progressbar(
+            node_modules_dirs, label="Calculating size"
+        ) as dirs_queue:
+            calculated_size = [calculate_size(dir) for dir in dirs_queue]
+
+    total_cleaned_mb = start_remove_dialog(node_modules_dirs, calculated_size)
 
     print(f"Cleaned {total_cleaned_mb} MB")
 
@@ -100,13 +117,54 @@ def find_node_modules_dirs(target_dir: Path, raises=False) -> list[Path]:
     return []
 
 
-def start_remove_dialog(node_modules_dirs: list[Path]) -> float:
+def start_remove_dialog(
+    node_modules_dirs: list[Path],
+    calculated_size: list[float] | None = None,
+) -> float:
     """
     Start the dialog with the user. Ask the user which node_modules
     folders to delete and delete them.
     Return the total amount of MB deleted.
     """
-    raise NotImplementedError()
+    print("Which node_modules folders do you want to delete?")
+    print("Enter a comma separated list of numbers to delete them.")
+    print("Enter 'all' to delete all folders.")
+
+    for i, dir in enumerate(node_modules_dirs):
+        size_str = f"{calculated_size[i]} MB" if calculated_size else ""
+        print(f"{i + 1}: {dir} {size_str}")
+
+    print("")
+
+    while True:
+        user_input = input("> ")
+
+        if user_input == "all":
+            break
+
+        try:
+            indexes = [int(i) - 1 for i in user_input.split(",")]
+        except ValueError:
+            print("Invalid input")
+            continue
+
+        if not all([0 <= i < len(node_modules_dirs) for i in indexes]):
+            print("Invalid input")
+            continue
+
+        break
+
+    if user_input == "all":
+        indexes = range(len(node_modules_dirs))
+
+    total_cleaned_mb = 0
+
+
+def calculate_size(dir: Path) -> float:
+    """
+    Calculate the size of the given directory in MB.
+    """
+    return 0.0
 
 
 def remove_node_modules(dir: Path) -> None:
@@ -142,6 +200,13 @@ def get_args() -> argparse.Namespace:
         help="show verbose output",
         default=False,
     )
+    parser.add_argument(
+        "--skip-calculating-size",
+        action="store_true",
+        help="skip calculating the size of the node_modules folders",
+        default=False,
+    )
+
     return parser.parse_args()
 
 
