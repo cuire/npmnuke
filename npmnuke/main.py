@@ -49,9 +49,17 @@ def find_node_modules_dirs(target_dir: Path) -> list[Path]:
     Find all folders that contain a node_modules folder.
     Not search for nested node_modules folders.
     """
+    if not target_dir.exists() or not target_dir.is_dir():
+        raise ValueError(f"Directory {target_dir} does not exist")
+
     dirs = []
 
+    log.debug(f"Scanning {target_dir}...")
+
     for dir in target_dir.iterdir():
+        if not dir.is_dir():
+            continue
+
         if dir.name == NODE_MODULES:
             dirs.append(dir.parent)
         else:
