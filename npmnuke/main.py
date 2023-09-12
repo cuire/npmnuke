@@ -61,11 +61,7 @@ def non_interactive_dialog(target_dir: Path, verbose=False) -> None:
     print(f"Cleaned {total_cleaned_mb} MB")
 
 
-def find_node_modules_dirs(target_dir: Path) -> list[Path]:
-    """
-    Find all folders that contain a node_modules folder.
-    Not search for nested node_modules folders.
-    """
+def _find_node_modules_dirs(target_dir: Path) -> list[Path]:
     if not target_dir.exists() or not target_dir.is_dir():
         raise ValueError(f"Directory {target_dir} does not exist")
 
@@ -83,6 +79,23 @@ def find_node_modules_dirs(target_dir: Path) -> list[Path]:
             dirs.extend(find_node_modules_dirs(dir))
 
     return dirs
+
+
+def find_node_modules_dirs(target_dir: Path, raises=False) -> list[Path]:
+    """
+    Find all folders that contain a node_modules folder.
+    Not search for nested node_modules folders.
+    """
+    try:
+        return _find_node_modules_dirs(target_dir)
+    except OSError as e:
+        if raises:
+            log.error(e)
+            raise e
+        else:
+            log.warning(e)
+
+    return []
 
 
 def start_remove_dialog(node_modules_dirs: list[Path]) -> float:
