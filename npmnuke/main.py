@@ -2,6 +2,7 @@ import argparse
 import logging
 import shutil
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import click
@@ -39,29 +40,38 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
+    dialog_settings = DialogSettings(
+        verbose=args.verbose,
+        skip_calculating_size=args.skip_calculating_size,
+    )
+
     if args.non_interactive:
-        non_interactive_dialog(
-            target_dir,
-            verbose=args.verbose,
-            skip_calculating_size=args.skip_calculating_size,
-        )
+        non_interactive_dialog(dialog_settings)
     else:
         interactive_dialog(target_dir)
 
 
-def interactive_dialog(target_dir: Path) -> None:
+@dataclass
+class DialogSettings:
+    """
+    Settings for the interactive dialog.
+    """
+
+    verbose: bool = False
+    skip_calculating_size: bool = False
+
+
+def interactive_dialog(options: DialogSettings) -> None:
     raise NotImplementedError()
 
 
-def non_interactive_dialog(
-    target_dir: Path, verbose=False, skip_calculating_size=False
-) -> None:
+def non_interactive_dialog(options: DialogSettings) -> None:
     print(f"> npmnuke 💥 {__version__}")
 
-    print(f"Scanning '{target_dir}' for '{NODE_MODULES}' folders")
+    print(f"Scanning '{options.target_dir}' for '{NODE_MODULES}' folders")
 
-    with Halo(text="Loading", spinner="dots", enabled=not verbose):
-        node_modules_dirs = find_node_modules_dirs(target_dir)
+    with Halo(text="Loading", spinner="dots", enabled=not options.verbose):
+        node_modules_dirs = find_node_modules_dirs(options.target_dir)
 
     print(f"Found {len(node_modules_dirs)} '{NODE_MODULES}' folders")
 
@@ -69,7 +79,7 @@ def non_interactive_dialog(
         return
 
     calculated_size = None
-    if not skip_calculating_size:
+    if not options.skip_calculating_size:
         with click.progressbar(
             node_modules_dirs, label="Calculating size"
         ) as dirs_queue:
