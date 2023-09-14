@@ -1,0 +1,64 @@
+# collections of directories where is most likely no need to search for node_modules
+# created as compiliation from https://github.com/github/gitignore/
+# if for whatever reason you need to add more directories in search use --include option in CLI
+# or remove them from this list
+
+# https://github.com/github/gitignore/blob/main/Python.gitignore
+__pycache__
+.Python
+build
+develop-eggs
+dist
+downloads
+eggs
+.eggs
+lib
+lib64
+parts
+sdist
+var
+wheels
+share/python-wheels
+*.egg-info
+htmlcov
+.tox
+.nox
+__pypackages__
+.env
+.venv
+env
+venv
+ENV
+env.bak
+venv.bak
+.mypy_cache
+.pyre
+.pytype
+cython_debug
+
+# https://github.com/github/gitignore/blob/main/Android.gitignore
+.gradle
+.externalNativeBuild
+.cxx
+.idea
+
+# https://github.com/github/gitignore/blob/main/Dart.gitignore
+.dart_tool
+.packages
+build
+
+# https://github.com/github/gitignore/blob/main/Godot.gitignore
+.godot
+.import
+.mono
+
+# https://github.com/github/gitignore/blob/main/Global/Windows.gitignore
+$RECYCLE.BIN
+
+# https://github.com/github/gitignore/blob/main/Global/macOS.gitignore
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+xcuserdata

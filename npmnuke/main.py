@@ -2,6 +2,7 @@ import argparse
 import logging
 import shutil
 import sys
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,9 +41,35 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
+    ignore_set = None
+    if not args.disable_ignore:
+        default_ignore_file = Path.home() / ".npmnukeignore"
+
+        ignore_file = Path(args.ignore_file or default_ignore_file)
+
+        if args.ignore_file and not ignore_file.exists():
+            log.error(f"Ignore file {ignore_file} does not exist")
+            sys.exit(1)
+
+        if not args.ignore_file and not default_ignore_file.exists():
+            log.warning(f"Ignore file {default_ignore_file} does not exist")
+            ignore_file = None
+
+        if ignore_file:
+            with open(ignore_file, "r") as f:
+                ignore_set = set(f.read().splitlines())
+
+            log.debug(f"Using ignore file {ignore_file}")
+
+    if args.ignore_dot:
+        log.debug("Ignoring dot folders")
+
     dialog_settings = DialogSettings(
+        target_dir=target_dir,
         verbose=args.verbose,
         skip_calculating_size=args.skip_calculating_size,
+        ignore_dot=args.ignore_dot,
+        ignore_set=ignore_set,
     )
 
     if args.non_interactive:
@@ -51,14 +78,20 @@ def main() -> None:
         interactive_dialog(target_dir)
 
 
+IgnoreSet = typing.Set[str]
+
+
 @dataclass
 class DialogSettings:
     """
     Settings for the interactive dialog.
     """
 
+    target_dir: Path
     verbose: bool = False
     skip_calculating_size: bool = False
+    ignore_dot: bool = True
+    ignore_set: IgnoreSet | None = None
 
 
 def interactive_dialog(options: DialogSettings) -> None:
@@ -71,7 +104,11 @@ def non_interactive_dialog(options: DialogSettings) -> None:
     print(f"Scanning '{options.target_dir}' for '{NODE_MODULES}' folders")
 
     with Halo(text="Loading", spinner="dots", enabled=not options.verbose):
-        node_modules_dirs = find_node_modules_dirs(options.target_dir)
+        node_modules_dirs = find_node_modules_dirs(
+            options.target_dir,
+            ignore_dot=options.ignore_dot,
+            ignore_set=options.ignore_set,
+        )
 
     print(f"Found {len(node_modules_dirs)} '{NODE_MODULES}' folders")
 
@@ -90,7 +127,9 @@ def non_interactive_dialog(options: DialogSettings) -> None:
     print(f"Cleaned {total_cleaned_mb} MB")
 
 
-def _find_node_modules_dirs(target_dir: Path) -> list[Path]:
+def _find_node_modules_dirs(
+    target_dir: Path, ignore_dot=False, ignore_set: IgnoreSet = None
+) -> list[Path]:
     if not target_dir.exists() or not target_dir.is_dir():
         raise ValueError(f"Directory {target_dir} does not exist")
 
@@ -102,21 +141,35 @@ def _find_node_modules_dirs(target_dir: Path) -> list[Path]:
         if not dir.is_dir():
             continue
 
+        if (ignore_dot and dir.name.startswith(".")) or (
+            ignore_set and dir.name in ignore_set
+        ):
+            log.debug(f"Ignoring {dir}")
+            continue
+
         if dir.name == NODE_MODULES:
             dirs.append(dir.parent)
         else:
-            dirs.extend(find_node_modules_dirs(dir))
+            dirs.extend(
+                find_node_modules_dirs(
+                    dir, ignore_dot=ignore_dot, ignore_set=ignore_set
+                )
+            )
 
     return dirs
 
 
-def find_node_modules_dirs(target_dir: Path, raises=False) -> list[Path]:
+def find_node_modules_dirs(
+    target_dir: Path, raises=False, ignore_dot=True, ignore_set: IgnoreSet = None
+) -> list[Path]:
     """
     Find all folders that contain a node_modules folder.
     Not search for nested node_modules folders.
     """
     try:
-        return _find_node_modules_dirs(target_dir)
+        return _find_node_modules_dirs(
+            target_dir, ignore_dot=ignore_dot, ignore_set=ignore_set
+        )
     except OSError as e:
         if raises:
             log.error(e)
@@ -215,6 +268,24 @@ def get_args() -> argparse.Namespace:
         action="store_true",
         help="skip calculating the size of the node_modules folders",
         default=False,
+    )
+    parser.add_argument(
+        "--ignore-file",
+        type=str,
+        help="path to the ignore file, by default .npmnukeignore in home directory is used",
+        default=None,
+    )
+    parser.add_argument(
+        "--disable-ignore",
+        action="store_true",
+        help="do not use the .npmnukeignore file when scanning for node_modules folders",
+        default=False,
+    )
+    parser.add_argument(
+        "--ignore-dot",
+        type=bool,
+        help="ignore dot folders (.vscode/ .git/ etc.), by default True",
+        default=True,
     )
 
     return parser.parse_args()

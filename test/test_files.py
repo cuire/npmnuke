@@ -72,6 +72,37 @@ def test_find_node_modules_ingnores_nested_node_modules(tmpdir: Path) -> None:
     assert node_modules_dirs[0].name == tmpdir.name
 
 
+def test_find_node_modules_dirs_ignores_dot_folders_by_default(tmpdir: Path) -> None:
+    dot_node_modules = tmpdir / ".dot" / "node_modules"
+    dot_node_modules.mkdir(parents=True, exist_ok=True)
+
+    node_modules_dirs = find_node_modules_dirs(tmpdir)
+
+    assert len(node_modules_dirs) == 0
+
+
+def test_find_node_modules_dirs_does_not_ignore_dot_folders(tmpdir: Path) -> None:
+    dot_node_modules = tmpdir / ".dot" / "node_modules"
+    dot_node_modules.mkdir(parents=True, exist_ok=True)
+
+    node_modules_dirs = find_node_modules_dirs(tmpdir, ignore_dot=False)
+
+    assert len(node_modules_dirs) == 1
+
+    assert node_modules_dirs[0].name == ".dot"
+
+
+def test_find_node_modules_dirs_ignores_folders_in_ignore_set(
+    tmpdir: Path,
+) -> None:
+    node_modules_dir = tmpdir / "AppData" / "node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+
+    node_modules_dirs = find_node_modules_dirs(tmpdir, ignore_set={"AppData"})
+
+    assert len(node_modules_dirs) == 0
+
+
 def test_remove_node_modules(tmpdir: Path) -> None:
     node_modules_dir = tmpdir / f"node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
