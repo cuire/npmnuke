@@ -1,9 +1,10 @@
+import os
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from npmnuke.main import find_node_modules_dirs, remove_node_modules
+from npmnuke.main import calculate_size, find_node_modules_dirs, remove_node_modules
 
 
 @pytest.fixture(autouse=True)
@@ -159,3 +160,103 @@ def test_remove_node_modules_return_size(tmpdir: Path) -> None:
     remove_node_modules(tmpdir)
 
     assert not node_modules_dir.exists()
+
+
+def test_calculate_size(tmpdir: Path) -> None:
+    node_modules_dir = tmpdir / f"node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+
+    # file with 1 KB of data
+    file = node_modules_dir / "file.txt"
+    file.touch()
+    file.write_text("a" * 1024, encoding="ASCII")
+
+    size = calculate_size(tmpdir)
+
+    assert size == pytest.approx(1 / 1024, 0.0001)
+
+
+def test_calculate_size_with_multiple_files(tmpdir: Path) -> None:
+    node_modules_dir = tmpdir / f"node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+
+    # file with 1 KB of data
+    file = node_modules_dir / "file.txt"
+    file.touch()
+    file.write_text("a" * 1024, encoding="ASCII")
+
+    # file with 2 KB of data
+    file = node_modules_dir / "file2.txt"
+    file.touch()
+    file.write_text("a" * 2048, encoding="ASCII")
+
+    size = calculate_size(tmpdir)
+
+    assert size == pytest.approx(3 / 1024, 0.0001)
+
+
+def test_calculate_size_with_nested_folders(tmpdir: Path) -> None:
+    node_modules_dir = tmpdir / "nested" / "node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+
+    # file with 1 KB of data
+    file = node_modules_dir / "file.txt"
+    file.touch()
+    file.write_text("a" * 1024, encoding="ASCII")
+
+    size = calculate_size(tmpdir)
+
+    assert size == pytest.approx(1 / 1024, 0.0001)
+
+
+def test_calculate_size_with_multiple_folders(tmpdir: Path) -> None:
+    FOLDER_COUNT = 3
+
+    for i in range(FOLDER_COUNT):
+        node_modules_dir = tmpdir / str(i) / "node_modules"
+        node_modules_dir.mkdir(parents=True, exist_ok=True)
+
+        # file with 1 KB of data
+        file = node_modules_dir / "file.txt"
+        file.touch()
+        file.write_text("a" * 1024, encoding="ASCII")
+
+    size = calculate_size(tmpdir)
+
+    assert size == pytest.approx(3 / 1024, 0.0001)
+
+
+@pytest.mark.skipif("nt" == os.name, reason="Windows does not support symlinks")
+def test_calculate_size_dont_follow_symlinks(tmpdir: Path) -> None:
+    """
+    Test to make sure that pnpm links are not included in the size calculation.
+    """
+    node_modules_dir = tmpdir / "node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+    hello = node_modules_dir / "hello"
+    hello.touch()
+    hello.write_text("a" * 1024)
+
+    # dir outside of scanned folder
+    ignored_dir = tmpdir / "ignored_dir"
+    ignored_dir.mkdir(parents=True, exist_ok=True)
+
+    symlink = node_modules_dir / "symlink"
+    symlink.symlink_to(ignored_dir)
+    symlink.touch()
+
+    assert symlink.is_symlink()
+
+    ignored_file = symlink / "ignored_file"
+    ignored_file.touch()
+    ignored_file.write_text("a" * 1024)
+
+    size = calculate_size(node_modules_dir)
+
+    assert size == pytest.approx(1 / 1024, 0.0001)
+
+
+def test_calculate_size_raises_error_on_non_existing_folder(tmpdir: Path) -> None:
+    invalid_path = tmpdir / "invalid_path"
+    with pytest.raises(FileNotFoundError):
+        calculate_size(invalid_path)

@@ -120,7 +120,7 @@ def non_interactive_dialog(options: DialogSettings) -> None:
         with click.progressbar(
             node_modules_dirs, label="Calculating size"
         ) as dirs_queue:
-            calculated_size = [calculate_size(dir) for dir in dirs_queue]
+            calculated_size = [calculate_size(dir / NODE_MODULES) for dir in dirs_queue]
 
     total_cleaned_mb = start_remove_dialog(node_modules_dirs, calculated_size)
 
@@ -223,11 +223,21 @@ def start_remove_dialog(
     total_cleaned_mb = 0
 
 
-def calculate_size(dir: Path) -> float:
+def calculate_size(dir: Path, raises=False) -> float:
     """
     Calculate the size of the given directory in MB.
     """
-    return 0.0
+    if not dir.exists() or not dir.is_dir():
+        raise FileNotFoundError(f"Directory {dir} does not exist")
+
+    total_size = 0.0
+
+    for file in dir.glob("**/*"):
+        print(file, file.is_symlink())
+        if file.is_file() and not file.is_symlink():
+            total_size += file.stat().st_size
+
+    return total_size / 1024 / 1024
 
 
 def remove_node_modules(dir: Path) -> None:
