@@ -260,3 +260,27 @@ def test_calculate_size_raises_error_on_non_existing_folder(tmpdir: Path) -> Non
     invalid_path = tmpdir / "invalid_path"
     with pytest.raises(FileNotFoundError):
         calculate_size(invalid_path)
+
+
+@pytest.mark.skipif("nt" != os.name, reason="Windows specific test")
+def test_calculate_size_ignores_windows_junctions(tmpdir: Path) -> None:
+    import _winapi
+
+    node_modules_dir = tmpdir / "node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+    hello = node_modules_dir / "hello"
+    hello.touch()
+    hello.write_text("a" * 1024)
+
+    ignored_dir = tmpdir / "ignored_dir"
+    ignored_dir.mkdir(parents=True, exist_ok=True)
+
+    ignored_file = ignored_dir / "ignored_file"
+    ignored_file.touch()
+    ignored_file.write_text("a" * 1024)
+
+    _winapi.CreateJunction(str(ignored_dir), str(node_modules_dir / "junction"))
+
+    size = calculate_size(node_modules_dir)
+
+    assert size == pytest.approx(1 / 1024, 0.0001)

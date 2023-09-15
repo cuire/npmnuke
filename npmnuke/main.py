@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import shutil
 import sys
 import typing
@@ -8,6 +9,19 @@ from pathlib import Path
 
 import click
 from halo import Halo
+
+if "nt" == os.name:
+    # https://github.com/python/cpython/issues/67596
+    # https://github.com/bleachbit/bleachbit/issues/668
+    from ctypes import windll
+
+    def is_junction(path: str) -> bool:
+        FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+        attr = windll.kernel32.GetFileAttributesW(path)
+        return bool(attr & FILE_ATTRIBUTE_REPARSE_POINT)
+
+    path_islink = os.path.islink
+    os.path.islink = lambda path: path_islink(path) or is_junction(path)
 
 __version__ = "0.1.0"
 
@@ -232,10 +246,9 @@ def calculate_size(dir: Path, raises=False) -> float:
 
     total_size = 0.0
 
-    for file in dir.glob("**/*"):
-        print(file, file.is_symlink())
-        if file.is_file() and not file.is_symlink():
-            total_size += file.stat().st_size
+    for root, _, files in os.walk(dir):
+        for file in files:
+            total_size += os.path.getsize(os.path.join(root, file))
 
     return total_size / 1024 / 1024
 
