@@ -138,7 +138,7 @@ def non_interactive_dialog(options: DialogSettings) -> None:
 
     total_cleaned_mb = start_remove_dialog(node_modules_dirs, calculated_size)
 
-    print(f"Cleaned {total_cleaned_mb} MB")
+    click.secho(f"Cleaned {total_cleaned_mb:.2f} MB", fg="green", bold=True)
 
 
 def _find_node_modules_dirs(
@@ -235,6 +235,17 @@ def start_remove_dialog(
         indexes = range(len(node_modules_dirs))
 
     total_cleaned_mb = 0
+
+    with click.progressbar(indexes, label="Removing") as indexes:
+        for i in indexes:
+            dir = node_modules_dirs[i]
+            size = calculated_size[i] if calculated_size else 0.0
+
+            remove_node_modules(dir)
+
+            total_cleaned_mb += size
+
+    return total_cleaned_mb
 
 
 def calculate_size(dir: Path, raises=False) -> float:
