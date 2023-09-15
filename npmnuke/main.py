@@ -78,12 +78,17 @@ def main() -> None:
     if args.ignore_dot:
         log.debug("Ignoring dot folders")
 
+    if args.dry_run:
+        log.debug("Dry run enabled")
+        click.secho("⚠️ Dry run enabled ⚠️", fg="yellow", bold=True)
+
     dialog_settings = DialogSettings(
         target_dir=target_dir,
         verbose=args.verbose,
         skip_calculating_size=args.skip_calculating_size,
         ignore_dot=args.ignore_dot,
         ignore_set=ignore_set,
+        dry_run=args.dry_run,
     )
 
     if args.non_interactive:
@@ -106,6 +111,7 @@ class DialogSettings:
     skip_calculating_size: bool = False
     ignore_dot: bool = True
     ignore_set: IgnoreSet | None = None
+    dry_run: bool = False
 
 
 def interactive_dialog(options: DialogSettings) -> None:
@@ -136,7 +142,11 @@ def non_interactive_dialog(options: DialogSettings) -> None:
         ) as dirs_queue:
             calculated_size = [calculate_size(dir / NODE_MODULES) for dir in dirs_queue]
 
-    total_cleaned_mb = start_remove_dialog(node_modules_dirs, calculated_size)
+    total_cleaned_mb = start_remove_dialog(
+        node_modules_dirs,
+        calculated_size,
+        options.dry_run,
+    )
 
     click.secho(f"Cleaned {total_cleaned_mb:.2f} MB", fg="green", bold=True)
 
@@ -197,6 +207,7 @@ def find_node_modules_dirs(
 def start_remove_dialog(
     node_modules_dirs: list[Path],
     calculated_size: list[float] | None = None,
+    dry_run=False,
 ) -> float:
     """
     Start the dialog with the user. Ask the user which node_modules
@@ -241,7 +252,10 @@ def start_remove_dialog(
             dir = node_modules_dirs[i]
             size = calculated_size[i] if calculated_size else 0.0
 
-            remove_node_modules(dir)
+            if not dry_run:
+                remove_node_modules(dir)
+
+            log.debug(f"Removed {dir} MB")
 
             total_cleaned_mb += size
 
@@ -320,6 +334,12 @@ def get_args() -> argparse.Namespace:
         type=bool,
         help="ignore dot folders (.vscode/ .git/ etc.), by default True",
         default=True,
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="do not remove any folders",
+        default=False,
     )
 
     return parser.parse_args()
