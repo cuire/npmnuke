@@ -6,6 +6,9 @@ import pytest
 
 from npmnuke.main import calculate_size, find_node_modules_dirs, remove_node_modules
 
+if os.name == "nt":
+    import _winapi
+
 
 @pytest.fixture(autouse=True)
 def tmpdir() -> None:
@@ -162,6 +165,58 @@ def test_remove_node_modules_return_size(tmpdir: Path) -> None:
     assert not node_modules_dir.exists()
 
 
+@pytest.mark.skipif("nt" == os.name, reason="Windows does not support symlinks")
+def test_remove_node_modules_ignores_symlinks(tmpdir: Path) -> None:
+    node_modules_dir = tmpdir / "node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+    hello = node_modules_dir / "hello"
+    hello.touch()
+    hello.write_text("a" * 1024)
+
+    ignored_dir = tmpdir / "ignored_dir"
+    ignored_dir.mkdir(parents=True, exist_ok=True)
+
+    symlink = node_modules_dir / "symlink"
+    symlink.symlink_to(ignored_dir)
+    symlink.touch()
+
+    assert symlink.is_symlink()
+
+    ignored_file = symlink / "ignored_file"
+    ignored_file.touch()
+    ignored_file.write_text("a" * 1024)
+
+    remove_node_modules(tmpdir)
+
+    assert not node_modules_dir.exists()
+
+    assert ignored_dir.exists()
+
+
+@pytest.mark.skipif("nt" != os.name, reason="Windows specific test")
+def test_remove_node_modules_ignores_junctions(tmpdir: Path) -> None:
+    node_modules_dir = tmpdir / "node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+    hello = node_modules_dir / "hello"
+    hello.touch()
+    hello.write_text("a" * 1024)
+
+    ignored_dir = tmpdir / "ignored_dir"
+    ignored_dir.mkdir(parents=True, exist_ok=True)
+
+    ignored_file = ignored_dir / "ignored_file"
+    ignored_file.touch()
+    ignored_file.write_text("a" * 1024)
+
+    _winapi.CreateJunction(str(ignored_dir), str(node_modules_dir / "junction"))
+
+    remove_node_modules(tmpdir)
+
+    assert not node_modules_dir.exists()
+
+    assert ignored_dir.exists()
+
+
 def test_calculate_size(tmpdir: Path) -> None:
     node_modules_dir = tmpdir / f"node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
@@ -264,8 +319,6 @@ def test_calculate_size_raises_error_on_non_existing_folder(tmpdir: Path) -> Non
 
 @pytest.mark.skipif("nt" != os.name, reason="Windows specific test")
 def test_calculate_size_ignores_windows_junctions(tmpdir: Path) -> None:
-    import _winapi
-
     node_modules_dir = tmpdir / "node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
     hello = node_modules_dir / "hello"
