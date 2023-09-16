@@ -124,10 +124,12 @@ def non_interactive_dialog(options: DialogSettings) -> None:
     print(f"Scanning '{options.target_dir}' for '{NODE_MODULES}' folders")
 
     with Halo(text="Loading", spinner="dots", enabled=not options.verbose):
-        node_modules_dirs = find_node_modules_dirs(
-            options.target_dir,
-            ignore_dot=options.ignore_dot,
-            ignore_set=options.ignore_set,
+        node_modules_dirs = list(
+            find_node_modules_dirs(
+                options.target_dir,
+                ignore_dot=options.ignore_dot,
+                ignore_set=options.ignore_set,
+            )
         )
 
     print(f"Found {len(node_modules_dirs)} '{NODE_MODULES}' folders")
@@ -153,11 +155,9 @@ def non_interactive_dialog(options: DialogSettings) -> None:
 
 def _find_node_modules_dirs(
     target_dir: Path, ignore_dot=False, ignore_set: IgnoreSet = None
-) -> list[Path]:
+) -> typing.Iterator[Path]:
     if not target_dir.exists() or not target_dir.is_dir():
         raise ValueError(f"Directory {target_dir} does not exist")
-
-    dirs = []
 
     log.debug(f"Scanning {target_dir}...")
 
@@ -172,26 +172,22 @@ def _find_node_modules_dirs(
             continue
 
         if dir.name == NODE_MODULES:
-            dirs.append(dir.parent)
+            yield dir.parent
         else:
-            dirs.extend(
-                find_node_modules_dirs(
-                    dir, ignore_dot=ignore_dot, ignore_set=ignore_set
-                )
+            yield from find_node_modules_dirs(
+                dir, ignore_dot=ignore_dot, ignore_set=ignore_set
             )
-
-    return dirs
 
 
 def find_node_modules_dirs(
     target_dir: Path, raises=False, ignore_dot=True, ignore_set: IgnoreSet = None
-) -> list[Path]:
+) -> typing.Iterator[Path]:
     """
     Find all folders that contain a node_modules folder.
     Not search for nested node_modules folders.
     """
     try:
-        return _find_node_modules_dirs(
+        yield from _find_node_modules_dirs(
             target_dir, ignore_dot=ignore_dot, ignore_set=ignore_set
         )
     except OSError as e:

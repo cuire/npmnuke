@@ -1,5 +1,6 @@
 import os
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,7 @@ def test_find_node_modules_dirs(tmpdir: Path) -> None:
     node_modules_dir = tmpdir / f"node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
 
-    node_modules_dirs = find_node_modules_dirs(tmpdir)
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir))
 
     assert len(node_modules_dirs) == 1
 
@@ -35,7 +36,7 @@ def test_find_node_modules_dirs_in_multiple_folders(tmpdir: Path) -> None:
         node_modules_dir = tmpdir / str(i) / f"node_modules"
         node_modules_dir.mkdir(parents=True, exist_ok=True)
 
-    node_modules_dirs = find_node_modules_dirs(tmpdir)
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir))
 
     assert len(node_modules_dirs) == FOLDER_COUNT
 
@@ -49,7 +50,7 @@ def test_find_node_modules_dirs_in_multiple_folders(tmpdir: Path) -> None:
 
 
 def test_find_node_modules_in_empty_folder(tmpdir: Path) -> None:
-    node_modules_dirs = find_node_modules_dirs(tmpdir)
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir))
 
     assert len(node_modules_dirs) == 0
 
@@ -58,7 +59,7 @@ def test_find_node_modules_in_nested_folder(tmpdir: Path) -> None:
     node_modules_dir = tmpdir / "nested" / "node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
 
-    node_modules_dirs = find_node_modules_dirs(tmpdir)
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir))
 
     assert len(node_modules_dirs) == 1
 
@@ -69,7 +70,7 @@ def test_find_node_modules_ingnores_nested_node_modules(tmpdir: Path) -> None:
     nested_node_modules_dir = tmpdir / "node_modules" / "node_modules" / "node_modules"
     nested_node_modules_dir.mkdir(parents=True, exist_ok=True)
 
-    node_modules_dirs = find_node_modules_dirs(tmpdir)
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir))
 
     assert len(node_modules_dirs) == 1
 
@@ -80,7 +81,7 @@ def test_find_node_modules_dirs_ignores_dot_folders_by_default(tmpdir: Path) -> 
     dot_node_modules = tmpdir / ".dot" / "node_modules"
     dot_node_modules.mkdir(parents=True, exist_ok=True)
 
-    node_modules_dirs = find_node_modules_dirs(tmpdir)
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir))
 
     assert len(node_modules_dirs) == 0
 
@@ -89,7 +90,7 @@ def test_find_node_modules_dirs_does_not_ignore_dot_folders(tmpdir: Path) -> Non
     dot_node_modules = tmpdir / ".dot" / "node_modules"
     dot_node_modules.mkdir(parents=True, exist_ok=True)
 
-    node_modules_dirs = find_node_modules_dirs(tmpdir, ignore_dot=False)
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir, ignore_dot=False))
 
     assert len(node_modules_dirs) == 1
 
@@ -102,9 +103,18 @@ def test_find_node_modules_dirs_ignores_folders_in_ignore_set(
     node_modules_dir = tmpdir / "AppData" / "node_modules"
     node_modules_dir.mkdir(parents=True, exist_ok=True)
 
-    node_modules_dirs = find_node_modules_dirs(tmpdir, ignore_set={"AppData"})
+    node_modules_dirs = list(find_node_modules_dirs(tmpdir, ignore_set={"AppData"}))
 
     assert len(node_modules_dirs) == 0
+
+
+def test_find_node_modules_itertor(tmpdir: Path) -> None:
+    node_modules_dir = tmpdir / f"node_modules"
+    node_modules_dir.mkdir(parents=True, exist_ok=True)
+
+    node_modules_dirs_iter = find_node_modules_dirs(tmpdir)
+
+    assert isinstance(node_modules_dirs_iter, Iterator)
 
 
 def test_remove_node_modules(tmpdir: Path) -> None:
