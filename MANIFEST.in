@@ -1,0 +1,2 @@
+include .npmnukeignore-template
+include requirements.txt
