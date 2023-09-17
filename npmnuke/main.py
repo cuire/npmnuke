@@ -215,7 +215,7 @@ def start_remove_dialog(
     print("Enter 'all' to delete all folders.")
 
     for i, dir in enumerate(node_modules_dirs):
-        size_str = f"{calculated_size[i]} MB" if calculated_size else ""
+        size_str = f"{calculated_size[i]:.2f} MB" if calculated_size else ""
         print(f"{i + 1}: {dir} {size_str}")
 
     print("")
