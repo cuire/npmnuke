@@ -12,6 +12,8 @@ By defaul script will ignore folders that start with a dot (.git, .vscode, etc.)
 
 - [ ] Add new UI using https://github.com/Textualize/textual
 - [ ] Somehow make it detect monorepos and combine search results for them
+- [ ] Add last modified date to search results
+- [ ] Add option to open search results in file manager
 
 
 ## Installation
