@@ -78,10 +78,13 @@ def main() -> None:
         dry_run=args.dry_run,
     )
 
-    if args.non_interactive:
-        non_interactive_dialog(dialog_settings)
-    else:
-        interactive_dialog(target_dir)
+    try:
+        if args.non_interactive:
+            non_interactive_dialog(dialog_settings)
+        else:
+            interactive_dialog(target_dir)
+    except KeyboardInterrupt:
+        print("\nExiting...")
 
 
 IgnoreSet = typing.Set[str]
