@@ -8,6 +8,11 @@ My PC had a lot of old web projects that I didn't use anymore, but they were tak
 
 By defaul script will ignore folders that start with a dot (.git, .vscode, etc.) and folders that contain a .npmnukeignore file. You can also specify your own ignore file with the `--ignore-file` option or modify `.nmpnukeignore` in your home directory.
 
+## Future plans
+
+- [ ] Add new UI using https://github.com/Textualize/textual
+- [ ] Somehow make it detect monorepos and combine search results for them
+
 
 ## Installation
 
