@@ -6,6 +6,18 @@ IgnoreSet = typing.Set[str]
 
 
 @dataclass
+class NodeFolder:
+    """
+    A node_modules folder.
+    """
+
+    path: Path
+    size: float | None = None
+    size_calculated: bool = False
+    deleted: bool = False
+
+
+@dataclass
 class DialogSettings:
     """
     Settings for the interactive dialog.
