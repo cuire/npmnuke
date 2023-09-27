@@ -3,7 +3,6 @@ from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
-from textual.reactive import var
 from textual.widgets import Footer, Header, ProgressBar
 
 from npmnuke.files import (
@@ -36,8 +35,6 @@ class NPMNuke(App):
     }
     """
 
-    loading = var(True)
-
     def __init__(self, path: Path, **kwargs):
         super().__init__(**kwargs)
         self._result_queue: asyncio.Queue[Path] = asyncio.Queue()
@@ -58,7 +55,6 @@ class NPMNuke(App):
     async def _load_node_modules(self) -> None:
         log.debug("Loading node_modules")
 
-        self.loading = True
         self._timer.start()
 
         for path in find_node_modules_dirs(self.path):
@@ -67,14 +63,8 @@ class NPMNuke(App):
 
         self._timer.stop()
         self._progress_bar.update(total=1, progress=1)
-        self.loading = False
 
         log.debug("Finished loading node_modules")
-
-    def watch_loading(self, loading: bool) -> None:
-        log.debug(f"Loading changed: {loading}")
-        if not loading:
-            self._progress_bar
 
     def compose(self) -> ComposeResult:
         """Compose our UI."""
