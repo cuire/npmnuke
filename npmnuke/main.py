@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 
+from npmnuke.app import NPMNuke
 from npmnuke.cli import non_interactive_dialog
 from npmnuke.logger import log
 from npmnuke.models import DialogSettings
@@ -62,7 +63,7 @@ def main() -> None:
         if args.non_interactive:
             non_interactive_dialog(dialog_settings)
         else:
-            interactive_dialog(target_dir)
+            NPMNuke(dialog_settings.target_dir).run()
     except KeyboardInterrupt:
         print("\nExiting...")
 
