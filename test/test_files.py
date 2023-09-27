@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from npmnuke.main import calculate_size, find_node_modules_dirs, remove_node_modules
+from npmnuke.files import calculate_size, find_node_modules_dirs, remove_node_modules
 
 if os.name == "nt":
     import _winapi
