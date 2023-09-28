@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -21,7 +22,16 @@ def main() -> None:
         sys.exit(1)
 
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+        # log to file
+        date = datetime.now()
+        date_str = date.strftime("%Y-%m-%d_%H-%M-%S")
+
+        logging.basicConfig(
+            filename=f"npmnuke-{date_str}.log",
+            filemode="w",
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            level=logging.DEBUG,
+        )
 
     ignore_set = None
     if not args.disable_ignore:
