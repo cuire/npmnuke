@@ -58,7 +58,11 @@ def main() -> None:
 
     if args.dry_run:
         log.debug("Dry run enabled")
-        click.secho("⚠️ Dry run enabled ⚠️", fg="yellow", bold=True)
+        click.secho(
+            "⚠️ Dry run enabled - node_modules folders will not be removed ⚠️",
+            fg="yellow",
+            bold=True,
+        )
 
     dialog_settings = DialogSettings(
         target_dir=target_dir,
