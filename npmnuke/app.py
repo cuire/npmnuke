@@ -23,6 +23,7 @@ class NPMNuke(App):
     # CSS_PATH = "code_browser.tcss"
     BINDINGS = [
         ("q", "quit", "Quit"),
+        ("space", "remove_selected", "Remove selected"),
     ]
 
     # add a css to progress
@@ -40,12 +41,16 @@ class NPMNuke(App):
     .result-list-item-label {
         width: 92vw;
     }
+    .result-list-item-removed {
+        color: red;
+    }
     """
 
     def __init__(self, path: Path, **kwargs):
         super().__init__(**kwargs)
         self._result_queue: asyncio.Queue[Path] = asyncio.Queue()
         self._result_size_queue: asyncio.Queue[tuple[Path, float]] = asyncio.Queue()
+        self._removed_queue: asyncio.Queue[NodeFolder] = asyncio.Queue()
 
         self._calculate_size_queue: asyncio.Queue[Path] = asyncio.Queue()
 
@@ -60,6 +65,7 @@ class NPMNuke(App):
         self.run_worker(self._load_node_modules(), thread=True, exclusive=True)
         self.run_worker(self._node_results.start_consumer(self._result_queue))
         self.run_worker(self._node_results.start_size_consumer(self._result_size_queue))
+        self.run_worker(self._node_results.start_removed_consumer(self._removed_queue))
 
         log.debug("TASKS CREATED")
 
@@ -85,6 +91,34 @@ class NPMNuke(App):
         await self._result_size_queue.put((path, size))
 
         log.debug(f"Finished calculating size of {path}")
+
+    async def action_remove_selected(self) -> None:
+        log.debug("Removing selected")
+
+        item = self._node_results.highlighted_child
+
+        if item is None:
+            return
+
+        node_folder = item.node_folder
+
+        if node_folder.removed or node_folder.size is None:
+            self.bell()
+            return
+
+        self._remove_node_modules(node_folder)
+
+    @work(group="remove")
+    async def _remove_node_modules(self, node_folder: Path) -> None:
+        path = node_folder.path
+
+        log.debug(f"Removing {path}")
+
+        remove_node_modules(path)
+
+        log.debug(f"Finished removing {path}")
+
+        await self._removed_queue.put(node_folder)
 
     def compose(self) -> ComposeResult:
         """Compose our UI."""

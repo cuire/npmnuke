@@ -11,7 +11,11 @@ from npmnuke.widgets.spinner import Spinner
 
 
 class NodeResultListItem(ListItem):
+    node_folder: NodeFolder
+
     def __init__(self, node_folder: NodeFolder, **kwargs) -> None:
+        self.node_folder = node_folder
+
         super().__init__(
             Horizontal(
                 Label(
@@ -24,14 +28,30 @@ class NodeResultListItem(ListItem):
             **kwargs,
         )
 
-    def update(self, *, path: Path, size: float | None) -> None:
+    def update(
+        self,
+        *,
+        path: Path,
+        size: float | None = None,
+        removed: bool = False,
+    ) -> None:
         self.children[0].text = str(path)
         if size is not None:
             self.query_one("#size").update(f"{size:.2f} MB")
             self.query_one("#spinner").stop()
 
+        if removed:
+            self.add_class("result-list-item-removed")
+        else:
+            self.remove_class("result-list-item-removed")
+
 
 class NodeResultsList(ListView):
+    class Selected(ListView.Selected):
+        def __init__(self, list_view: typing.Self, item: NodeResultListItem) -> None:
+            super().__init__(list_view, item)
+            self.item: NodeResultListItem
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.node_results: typing.Dict[Path, NodeFolder] = {}
@@ -59,6 +79,25 @@ class NodeResultsList(ListView):
 
             await self._update_size(node_result, size)
 
+    async def start_removed_consumer(self, queue: asyncio.Queue[NodeFolder]) -> None:
+        while True:
+            node_folder = await queue.get()
+
+            if node_folder is None:
+                asyncio.sleep(0.1)
+
+            await self._mark_removed(node_folder)
+
+    async def _mark_removed(self, node_folder: NodeFolder) -> None:
+        async with self.lock:
+            if node_folder.path not in self.node_results:
+                log.error(f"Remove: Node result {node_folder.path} not found")
+                return
+
+            self.node_results[node_folder.path].removed = True
+
+            await self._update_list_item(node_folder.path)
+
     async def _append(self, node_result: Path) -> None:
         node_folder = NodeFolder(path=node_result)
         id = NodeResultsList.path_to_id(node_result)
@@ -84,10 +123,11 @@ class NodeResultsList(ListView):
 
         node_folder = self.node_results[node_result]
 
-        list_item.update(path=node_folder.path, size=node_folder.size)
-
-    def on_node_result_list_item_click(self, item: NodeResultListItem) -> None:
-        log.debug(f"Clicked {item.path}")
+        list_item.update(
+            path=node_folder.path,
+            size=node_folder.size,
+            removed=node_folder.removed,
+        )
 
     @staticmethod
     def path_to_id(path: Path) -> str:

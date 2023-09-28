@@ -14,7 +14,7 @@ class NodeFolder:
     path: Path
     size: float | None = None
     size_calculated: bool = False
-    deleted: bool = False
+    removed: bool = False
 
 
 @dataclass
