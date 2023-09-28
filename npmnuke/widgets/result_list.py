@@ -17,6 +17,15 @@ class NodeResultListItem(ListItem):
     .hide-spinner {
         display: none;
     }
+    .result-list-item {
+        content-align: right top;
+    }
+    .result-list-item-label {
+        width: 92vw;
+    }
+    .result-list-item-removed {
+        color: red;
+    }
     """
 
     def __init__(

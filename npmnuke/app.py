@@ -35,15 +35,6 @@ class NPMNuke(App):
     .timer {
         margin: 0 0 0 1;
     }
-    .result-list-item {
-        content-align: right top;
-    }
-    .result-list-item-label {
-        width: 92vw;
-    }
-    .result-list-item-removed {
-        color: red;
-    }
     """
 
     def __init__(self, settings: DialogSettings, **kwargs):
