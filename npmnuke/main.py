@@ -73,7 +73,7 @@ def main() -> None:
         if args.non_interactive:
             non_interactive_dialog(dialog_settings)
         else:
-            NPMNuke(dialog_settings.target_dir).run()
+            NPMNuke(dialog_settings).run()
     except KeyboardInterrupt:
         print("\nExiting...")
 

@@ -13,7 +13,7 @@ from npmnuke.files import (
     remove_node_modules,
 )
 from npmnuke.logger import log
-from npmnuke.models import NodeFolder
+from npmnuke.models import DialogSettings, NodeFolder
 from npmnuke.widgets import NodeResultsList, Timer
 
 
@@ -46,7 +46,7 @@ class NPMNuke(App):
     }
     """
 
-    def __init__(self, path: Path, **kwargs):
+    def __init__(self, settings: DialogSettings, **kwargs):
         super().__init__(**kwargs)
         self._result_queue: asyncio.Queue[Path] = asyncio.Queue()
         self._result_size_queue: asyncio.Queue[tuple[Path, float]] = asyncio.Queue()
@@ -54,7 +54,7 @@ class NPMNuke(App):
 
         self._calculate_size_queue: asyncio.Queue[Path] = asyncio.Queue()
 
-        self.path = path
+        self._settings = settings
 
     async def on_mount(self) -> None:
         await self._start_tasks()
@@ -64,7 +64,10 @@ class NPMNuke(App):
 
         self.run_worker(self._load_node_modules(), thread=True, exclusive=True)
         self.run_worker(self._node_results.start_consumer(self._result_queue))
-        self.run_worker(self._node_results.start_size_consumer(self._result_size_queue))
+        if not self._settings.skip_calculating_size:
+            self.run_worker(
+                self._node_results.start_size_consumer(self._result_size_queue)
+            )
         self.run_worker(self._node_results.start_removed_consumer(self._removed_queue))
 
         log.debug("TASKS CREATED")
@@ -74,9 +77,15 @@ class NPMNuke(App):
 
         self._timer.start()
 
-        for path in find_node_modules_dirs(self.path):
+        for path in find_node_modules_dirs(
+            self._settings.target_dir,
+            ignore_dot=self._settings.ignore_dot,
+            ignore_set=self._settings.ignore_set,
+        ):
             await self._result_queue.put(path)
-            self._calculate_size(path)
+
+            if not self._settings.skip_calculating_size:
+                self._calculate_size(path)
 
         self._timer.stop()
         self._progress_bar.update(total=1, progress=1)
@@ -102,7 +111,9 @@ class NPMNuke(App):
 
         node_folder = item.node_folder
 
-        if node_folder.removed or node_folder.size is None:
+        if node_folder.removed or (
+            not self._settings.skip_calculating_size and node_folder.size is None
+        ):
             self.bell()
             return
 
@@ -114,7 +125,8 @@ class NPMNuke(App):
 
         log.debug(f"Removing {path}")
 
-        remove_node_modules(path)
+        if not self._settings.dry_run:
+            remove_node_modules(path)
 
         log.debug(f"Finished removing {path}")
 
@@ -123,7 +135,9 @@ class NPMNuke(App):
     def compose(self) -> ComposeResult:
         """Compose our UI."""
         log.debug("COMPOSE UI")
-        self._node_results = NodeResultsList()
+        self._node_results = NodeResultsList(
+            skip_calculating_size=self._settings.skip_calculating_size
+        )
         self._progress_bar = ProgressBar(show_percentage=False, show_eta=False)
         self._timer = Timer(classes="timer")
         yield Header()

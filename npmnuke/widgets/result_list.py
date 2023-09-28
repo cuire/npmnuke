@@ -13,16 +13,28 @@ from npmnuke.widgets.spinner import Spinner
 class NodeResultListItem(ListItem):
     node_folder: NodeFolder
 
-    def __init__(self, node_folder: NodeFolder, **kwargs) -> None:
+    DEFAULT_CSS = """
+    .hide-spinner {
+        display: none;
+    }
+    """
+
+    def __init__(
+        self, node_folder: NodeFolder, skip_calculating_size=False, **kwargs
+    ) -> None:
         self.node_folder = node_folder
+        self._skip_calculating_size = skip_calculating_size
 
         super().__init__(
             Horizontal(
                 Label(
                     str(node_folder.path), id="path", classes="result-list-item-label"
                 ),
-                Label(id="size"),
-                Spinner(id="spinner"),
+                Label("--" if skip_calculating_size else "", id="size"),
+                Spinner(
+                    id="spinner",
+                    classes=f"{'' if not skip_calculating_size else 'hide-spinner'}",
+                ),
             ),
             classes="result-list-item",
             **kwargs,
@@ -36,7 +48,7 @@ class NodeResultListItem(ListItem):
         removed: bool = False,
     ) -> None:
         self.children[0].text = str(path)
-        if size is not None:
+        if size is not None and not self._skip_calculating_size:
             self.query_one("#size").update(f"{size:.2f} MB")
             self.query_one("#spinner").stop()
 
@@ -52,8 +64,9 @@ class NodeResultsList(ListView):
             super().__init__(list_view, item)
             self.item: NodeResultListItem
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
+    def __init__(self, *args, skip_calculating_size=False, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._skip_calculating_size = skip_calculating_size
         self.node_results: typing.Dict[Path, NodeFolder] = {}
         self.lock = asyncio.Lock()
 
@@ -101,7 +114,11 @@ class NodeResultsList(ListView):
     async def _append(self, node_result: Path) -> None:
         node_folder = NodeFolder(path=node_result)
         id = NodeResultsList.path_to_id(node_result)
-        list_item = NodeResultListItem(node_folder, id=id)
+        list_item = NodeResultListItem(
+            node_folder,
+            id=id,
+            skip_calculating_size=self._skip_calculating_size,
+        )
 
         async with self.lock:
             self.node_results[node_result] = node_folder
