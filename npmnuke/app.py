@@ -1,6 +1,7 @@
 import asyncio
 from pathlib import Path
 
+from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Footer, Header, ProgressBar
@@ -33,12 +34,21 @@ class NPMNuke(App):
     .timer {
         margin: 0 0 0 1;
     }
+    .result-list-item {
+        content-align: right top;
+    }
+    .result-list-item-label {
+        width: 92vw;
+    }
     """
 
     def __init__(self, path: Path, **kwargs):
         super().__init__(**kwargs)
         self._result_queue: asyncio.Queue[Path] = asyncio.Queue()
+        self._result_size_queue: asyncio.Queue[tuple[Path, float]] = asyncio.Queue()
+
         self._calculate_size_queue: asyncio.Queue[Path] = asyncio.Queue()
+
         self.path = path
 
     async def on_mount(self) -> None:
@@ -49,6 +59,7 @@ class NPMNuke(App):
 
         self.run_worker(self._load_node_modules(), thread=True, exclusive=True)
         self.run_worker(self._node_results.start_consumer(self._result_queue))
+        self.run_worker(self._node_results.start_size_consumer(self._result_size_queue))
 
         log.debug("TASKS CREATED")
 
@@ -59,12 +70,21 @@ class NPMNuke(App):
 
         for path in find_node_modules_dirs(self.path):
             await self._result_queue.put(path)
-            await self._calculate_size_queue.put(path)
+            self._calculate_size(path)
 
         self._timer.stop()
         self._progress_bar.update(total=1, progress=1)
 
         log.debug("Finished loading node_modules")
+
+    @work(thread=True)
+    async def _calculate_size(self, path: Path) -> None:
+        log.debug(f"Calculating size of {path}")
+
+        size = calculate_size(path)
+        await self._result_size_queue.put((path, size))
+
+        log.debug(f"Finished calculating size of {path}")
 
     def compose(self) -> ComposeResult:
         """Compose our UI."""
